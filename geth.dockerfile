@@ -1,4 +1,4 @@
-FROM ethereum/client-go:v1.10.1
+FROM ethereum/client-go:latest
 
 # Copy the genesis.json into the image and initialize the genesis block
 COPY genesis.json /tmp
