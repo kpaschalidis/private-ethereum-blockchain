@@ -20,4 +20,3 @@ echo 'Accounts:'
 ./rpc-commands/eth_accounts.sh
 echo ''
 echo ''
-
