@@ -7,11 +7,11 @@ services:
       - "80:80"
       - "443:443"
       - "3001:3001" # Netstats
-      - "3002:3002" # Netstats
+      - "3002:3002" # Lite Explorer
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
     depends_on:
-      - netstats
+      - monitor
       - lite-explorer
     networks:
       priv-eth-net:
@@ -85,9 +85,9 @@ services:
     networks:
       priv-eth-net:
 
-  netstats:
-    container_name: netstats
-    build: ./eth-netstats
+  monitor:
+    container_name: monitor
+    build: ./monitor
     environment:
       - TZ=`ls -la /etc/localtime | cut -d/ -f8-9
       - WS_SECRET=eth-net-stats-secret
