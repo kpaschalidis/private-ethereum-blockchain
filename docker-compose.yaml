@@ -10,6 +10,9 @@ services:
       - "3002:3002" # Netstats
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - netstats
+      - lite-explorer
     networks:
       priv-eth-net:
 
