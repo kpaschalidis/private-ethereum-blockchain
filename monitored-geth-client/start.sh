@@ -18,7 +18,7 @@ sleep 3
 # get IP address of the "miner" service, which we 
 # set up as the bootnode for this network, and
 # merge it into the other options from "docker-compose.yml"
-BOOTSTRAP_IP=`getent hosts miner | cut -d" " -f1`
+BOOTSTRAP_IP=`getent hosts bootnode | cut -d" " -f1`
 echo "BOOTSTRAP_IP ${BOOTSTRAP_IP}"
 GETH_OPTS=${@/XXX/$BOOTSTRAP_IP}
 
