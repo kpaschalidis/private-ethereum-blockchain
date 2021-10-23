@@ -1,23 +1,15 @@
 version: "3"
 services:
   proxy:
+    container_name: proxy
     image: nginx:alpine
     ports:
       - "80:80"
       - "443:443"
       - "3001:3001" # Netstats
+      - "3002:3002" # Netstats
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
-    networks:
-      priv-eth-net:
-
-  netstats:
-    container_name: netstats
-    build: ./eth-netstats
-    environment:
-      - TZ=`ls -la /etc/localtime | cut -d/ -f8-9
-      - WS_SECRET=eth-net-stats-secret
-    restart: on-failure
     networks:
       priv-eth-net:
 
@@ -27,8 +19,6 @@ services:
     build: ./monitored-geth-client
     env_file:
       - .env
-    depends_on:
-      - netstats
     environment:
       - TZ=`ls -la /etc/localtime | cut -d/ -f8-9
     entrypoint: /root/start.sh
@@ -49,7 +39,6 @@ services:
       - .env
     depends_on:
       - bootnode
-      - netstats
     environment:
       - TZ=`ls -la /etc/localtime | cut -d/ -f8-9
     entrypoint: /root/start.sh
@@ -72,7 +61,6 @@ services:
       - .env
     depends_on:
       - bootnode
-      - netstats
     ports:
       - "8545:8545"
       - "8546:8546"
@@ -91,6 +79,28 @@ services:
       --ws.origins="*"
       --bootnodes="enode://288b97262895b1c7ec61cf314c2e2004407d0a5dc77566877aad1f2a36659c8b698f4b56fd06c4a0c0bf007b4cfb3e7122d907da3b005fa90e724441902eb19e@bootnode:30303"'
     restart: on-failure
+    networks:
+      priv-eth-net:
+
+  netstats:
+    container_name: netstats
+    build: ./eth-netstats
+    environment:
+      - TZ=`ls -la /etc/localtime | cut -d/ -f8-9
+      - WS_SECRET=eth-net-stats-secret
+    restart: on-failure
+    networks:
+      priv-eth-net:
+
+  lite-explorer:
+    container_name: lite-explorer
+    hostname: lite-explorer
+    depends_on:
+      - gateway
+    image: alethio/ethereum-lite-explorer
+    container_name: lite-explorer
+    environment:
+      - APP_NODE_URL=http://localhost:8545
     networks:
       priv-eth-net:
 
