@@ -28,7 +28,7 @@ services:
     environment:
       - TZ=`ls -la /etc/localtime | cut -d/ -f8-9
     entrypoint: /root/start.sh
-    command: '--datadir=~/.ethereum/devchain --networkid=31337
+    command: '--datadir=~/.ethereum/devchain --networkid=${NETWORK_ID}
       --mine
       --miner.threads=1
       --miner.gastarget="9000000000000"
@@ -53,7 +53,7 @@ services:
       - TZ=`ls -la /etc/localtime | cut -d/ -f8-9
     entrypoint: /root/start.sh
     command: '--datadir=~/.ethereum/devchain
-      --networkid=31337
+      --networkid=${NETWORK_ID}
       --http
       --http.addr="0.0.0.0"
       --http.api="eth,web3,net,admin,personal"
