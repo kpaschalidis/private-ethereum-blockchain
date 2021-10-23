@@ -21,7 +21,7 @@ services:
     hostname: bootnode
     build: ./monitored-geth-client
     env_file:
-      - .env
+      - ./.env
     environment:
       - TZ=`ls -la /etc/localtime | cut -d/ -f8-9
     entrypoint: /root/start.sh
@@ -39,7 +39,7 @@ services:
     hostname: miner
     build: ./monitored-geth-client
     env_file:
-      - .env
+      - ./.env
     depends_on:
       - bootnode
     environment:
@@ -61,7 +61,7 @@ services:
     hostname: gatewway
     build: ./monitored-geth-client
     env_file:
-      - .env
+      - ./.env
     depends_on:
       - bootnode
     ports:
