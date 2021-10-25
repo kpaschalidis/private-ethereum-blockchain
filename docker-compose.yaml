@@ -1,66 +1,185 @@
 version: "3"
 services:
   proxy:
+    container_name: proxy
     image: nginx:alpine
     ports:
       - "80:80"
       - "443:443"
       - "3001:3001" # Netstats
-
+      - "3002:3002" # Lite Explorer
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
-  netstats:
-    container_name: netstats
-    build: ./eth-netstats
+    depends_on:
+      - monitor
+      - lite-explorer
+    networks:
+      priv-eth-net:
+        
+  bootnode:
+    container_name: bootnode
+    hostname: bootnode
+    build: ./monitored-geth-client
+    env_file:
+      - ./.env
     environment:
       - TZ=`ls -la /etc/localtime | cut -d/ -f8-9
-      - WS_SECRET=eth-net-stats-secret
+    entrypoint: /root/start.sh
+    command: "--datadir=~/.ethereum/devchain --networkid=${NETWORK_ID}
+      --nodekeyhex=091bd6067cb4612df85d9c1ff85cc47f259ced4d4cd99816b14f35650f59c322"
     restart: on-failure
-
+    ports:
+      - 30301:30301/udp
+      - 30303:30303/udp
+    networks:
+      priv-eth-net:
+        ipv4_address: 172.25.0.101 # The miners need to know the IP address later on
+        
   miner:
     container_name: miner
     hostname: miner
     build: ./monitored-geth-client
     env_file:
-      - .env
+      - ./.env
     depends_on:
-      - netstats
+      - bootnode
     environment:
       - TZ=`ls -la /etc/localtime | cut -d/ -f8-9
     entrypoint: /root/start.sh
-    command: '--datadir=~/.ethereum/devchain --networkid=31337
+    command: '--datadir=~/.ethereum/devchain --networkid=${NETWORK_ID}
       --mine
       --miner.threads=1
       --miner.gastarget="9000000000000"
       --unlock="007ccffb7916f37f7aeef05e8096ecfbe55afc2f"
       --password="/root/files/password.txt"
-      --nodekeyhex=091bd6067cb4612df85d9c1ff85cc47f259ced4d4cd99816b14f35650f59c322'
+      --bootnodes="enode://288b97262895b1c7ec61cf314c2e2004407d0a5dc77566877aad1f2a36659c8b698f4b56fd06c4a0c0bf007b4cfb3e7122d907da3b005fa90e724441902eb19e@bootnode:30303"'
     restart: on-failure
+    networks:
+      priv-eth-net:
+        ipv4_address: 172.25.0.102
+
   gateway:
-    container_name: gatewway
-    hostname: gatewway
+    container_name: gateway
+    hostname: gateway
     build: ./monitored-geth-client
     env_file:
-      - .env
+      - ./.env
     depends_on:
-      - miner
-      - netstats
+      - bootnode
     ports:
-      - "30303:30303"
       - "8545:8545"
       - "8546:8546"
     environment:
       - TZ=`ls -la /etc/localtime | cut -d/ -f8-9
     entrypoint: /root/start.sh
     command: '--datadir=~/.ethereum/devchain
-      --networkid=31337
+      --networkid=${NETWORK_ID}
       --http
       --http.addr="0.0.0.0"
-      --http.api="eth,web3,net,admin,personal"
+      --http.api="eth,web3,net,admin,personal,txpool,miner"
       --http.corsdomain="*"
       --ws
       --ws.port=8546
       --ws.api="eth,net,web3"
       --ws.origins="*"
-      --bootnodes="enode://288b97262895b1c7ec61cf314c2e2004407d0a5dc77566877aad1f2a36659c8b698f4b56fd06c4a0c0bf007b4cfb3e7122d907da3b005fa90e724441902eb19e@miner:30303"'
+      --syncmode full --gcmode archive --txlookuplimit=0 --cache.preimages
+      --bootnodes="enode://288b97262895b1c7ec61cf314c2e2004407d0a5dc77566877aad1f2a36659c8b698f4b56fd06c4a0c0bf007b4cfb3e7122d907da3b005fa90e724441902eb19e@bootnode:30303"'
     restart: on-failure
+    networks:
+      priv-eth-net:
+        ipv4_address: 172.25.0.110
+
+  monitor:
+    container_name: monitor
+    build: ./monitor
+    environment:
+      - TZ=`ls -la /etc/localtime | cut -d/ -f8-9
+      - WS_SECRET=eth-net-stats-secret
+    restart: on-failure
+    networks:
+      priv-eth-net:
+
+  lite-explorer:
+    container_name: lite-explorer
+    hostname: lite-explorer
+    depends_on:
+      - gateway
+    image: alethio/ethereum-lite-explorer
+    container_name: lite-explorer
+    environment:
+      - APP_NODE_URL=http://localhost:8545
+    networks:
+      priv-eth-net:
+  
+  archive:
+    container_name: archive
+    hostname: archive
+    build: ./monitored-geth-client
+    env_file:
+      - ./.env
+    depends_on:
+      - bootnode
+    environment:
+      - TZ=`ls -la /etc/localtime | cut -d/ -f8-9
+    entrypoint: /root/start.sh
+    command: '--datadir=~/.ethereum/devchain
+      --networkid=${NETWORK_ID}
+      --http
+      --http.addr="0.0.0.0"
+      --http.api="eth,web3,net,admin,personal,txpool,miner,debug"
+      --http.corsdomain="*"
+      --ws
+      --ws.port=8546
+      --ws.api="eth,net,web3"
+      --ws.origins="*"
+      --syncmode full --gcmode archive --txlookuplimit=0 --cache.preimages
+      --bootnodes="enode://288b97262895b1c7ec61cf314c2e2004407d0a5dc77566877aad1f2a36659c8b698f4b56fd06c4a0c0bf007b4cfb3e7122d907da3b005fa90e724441902eb19e@bootnode:30303"'
+    restart: on-failure
+    networks:
+      priv-eth-net:
+        ipv4_address: 172.25.0.109
+  
+  blockscout-explorer:
+    hostname: blockscout-explorer
+    depends_on:
+      - archive
+      - postgres
+    build:
+      context: ./blockscout
+      args:
+        COIN: ETH
+    restart: on-failure
+    command: /bin/bash -c "mix do ecto.create, ecto.migrate && mix phx.server"
+    container_name: blockscout-explorer
+    environment:
+      - ETHEREUM_JSONRPC_VARIANT=geth
+      - ETHEREUM_JSONRPC_HTTP_URL=http://172.25.0.109:8545
+      - DATABASE_URL=postgresql://postgres:@172.25.0.128:5432/explorer?ssl=false
+      - MIX_ENV=prod
+      - NETWORK=POA
+    ports:
+      - 4000:4000
+    networks:
+      priv-eth-net:
+
+  postgres:
+    hostname: postgres
+    container_name: postgres
+    image: postgres:12.5
+    restart: on-failure
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_PASSWORD='' # default for authentication method trust
+      - POSTGRES_USER=postgres # default superuser and owner
+    ports:
+      - 5432:5432
+    networks:
+      priv-eth-net:
+        ipv4_address: 172.25.0.128
+
+networks:
+  priv-eth-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/24

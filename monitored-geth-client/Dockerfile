@@ -1,5 +1,5 @@
 # start with the pre-built geth image
-FROM ethereum/client-go:latest
+FROM ethereum/client-go:v1.10.1
 
 # install git bash nodejs nodejs-npm perl
 RUN apk add --update git bash nodejs npm perl
